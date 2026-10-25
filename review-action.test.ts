@@ -30,7 +30,7 @@ it("starts a child review in the target thread's project and checkout, then open
     environment: { type: "reuse", environmentId: "target-checkout" },
     providerId: "codex",
     title: "Thermo Nuclear Review",
-    prompt: "сделай ревью изменений скиллом cursor-team-kit:thermo-nuclear-code-quality-review",
+    prompt: "Review the changes using the cursor-team-kit:thermo-nuclear-code-quality-review skill.",
   });
   expect(navigate.toThread).toHaveBeenCalledExactlyOnceWith("review-thread");
 });

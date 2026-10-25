@@ -1,6 +1,6 @@
 import type { BbNavigate, PluginBrowserBbSdk, PluginThreadAction, PluginThreadActionTarget } from "@get-bb/plugin-sdk/app";
 
-export const REVIEW_PROMPT = "сделай ревью изменений скиллом cursor-team-kit:thermo-nuclear-code-quality-review";
+export const REVIEW_PROMPT = "Review the changes using the cursor-team-kit:thermo-nuclear-code-quality-review skill.";
 
 type Spawn = (args: Parameters<PluginBrowserBbSdk["threads"]["spawn"]>[0]) => Promise<{ id: string }>;
 
@@ -15,7 +15,7 @@ export function createReviewActionFactory() {
     return {
       label: "Thermo Nuclear Review",
       icon: "FileCheck",
-      detail: environment?.path ? "Запустить ревью в дочернем треде" : "Окружение треда недоступно",
+      detail: environment?.path ? "Start a review in a child thread" : "Thread environment is unavailable",
       disabled: !environment?.path,
       async run() {
         if (!environment?.path || running.has(thread.id)) return;

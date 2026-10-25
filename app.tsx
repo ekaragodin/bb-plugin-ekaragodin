@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { definePluginApp, experimental_THREAD_ACTION_GROUPS, experimental_useSidebarThreads } from "@get-bb/plugin-sdk/app";
 import { decorateThreadRows } from "./labels";
 import { createReviewActionFactory } from "./review-action";
+import { ThreadSwitcher } from "./thread-switcher-overlay";
 
 function ProjectLabels() {
   const { threads, projects } = experimental_useSidebarThreads();
@@ -20,6 +21,7 @@ function ProjectLabels() {
 export default definePluginApp((app) => {
   const createReviewAction = createReviewActionFactory();
   app.slots.experimental_appOverlay({ id: "project-labels", component: ProjectLabels });
+  app.slots.experimental_appOverlay({ id: "thread-switcher", component: ThreadSwitcher });
   app.slots.experimental_threadAction({
     id: "thermo-nuclear-review",
     title: "Thermo Nuclear Review",
