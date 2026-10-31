@@ -21,6 +21,11 @@ select another thread (the previously visited thread once navigation history exi
 visits, or **Shift+Tab** to move backward. Release Ctrl to open the selection
 and focus its composer. **Esc** or leaving the window cancels the selection.
 
+The list stays hidden for the first **100 ms after the initial Ctrl+Tab**.
+Releasing Ctrl within that time (including exactly 100 ms) opens the selection
+without showing the list. Holding Ctrl longer reveals the list automatically.
+All Tab and Shift+Tab presses count during the delay; they do not restart it.
+
 The centered list shows thread titles, projects, native agent icons and BB sidebar
 status glyphs (including draft and plugin status), with up to eight
 visible rows; only the viewport and a small overscan window are mounted, even

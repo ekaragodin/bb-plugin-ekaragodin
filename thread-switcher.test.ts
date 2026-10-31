@@ -1,6 +1,91 @@
 // @vitest-environment jsdom
-import { expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createThreadSwitcher, isSwitcherComposerFocused, sidebarThreadOrder, type SwitcherState } from "./thread-switcher";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
+
+it.each([0, 99, 100])("switches without showing the list when Ctrl is released after %i ms", elapsed => {
+  const h = setup();
+  h.tab();
+  expect(h.state?.visible).toBe(false);
+  vi.advanceTimersByTime(elapsed);
+  expect(h.state?.visible).toBe(false);
+  h.release();
+  expect(h.commit).toHaveBeenCalledExactlyOnceWith("b");
+  vi.advanceTimersByTime(200);
+  expect(h.state).toBeNull();
+});
+
+it("starts the delay at Ctrl+Tab and reveals automatically only after 100 ms", () => {
+  const h = setup();
+  h.switcher.keydown(new KeyboardEvent("keydown", { key: "Control", ctrlKey: true }));
+  vi.advanceTimersByTime(500);
+  expect(h.state).toBeNull();
+  h.tab();
+  vi.advanceTimersByTime(100);
+  expect(h.state?.visible).toBe(false);
+  vi.advanceTimersByTime(1);
+  expect(h.state?.visible).toBe(true);
+  expect(h.commit).not.toHaveBeenCalled();
+  h.release();
+  expect(h.commit).toHaveBeenCalledExactlyOnceWith("b");
+});
+
+it("keeps all fast forward and reverse steps without restarting the reveal delay", () => {
+  const h = setup();
+  h.tab();
+  vi.advanceTimersByTime(40);
+  h.tab();
+  h.tab();
+  h.tab(true);
+  expect(h.state?.selected).toBe(2);
+  expect(h.state?.visible).toBe(false);
+  vi.advanceTimersByTime(61);
+  expect(h.state?.visible).toBe(true);
+  expect(h.state?.selected).toBe(2);
+  h.tab(true);
+  expect(h.state?.visible).toBe(true);
+  h.release();
+  expect(h.commit).toHaveBeenCalledExactlyOnceWith("b");
+});
+
+it("commits the final selection after several invisible steps", () => {
+  const h = setup();
+  h.tab(); h.tab(); h.tab(); h.tab(true);
+  expect(h.state?.visible).toBe(false);
+  h.release();
+  expect(h.commit).toHaveBeenCalledExactlyOnceWith("a");
+});
+
+it.each(["escape", "blur", "navigation", "archive"])("cancels the pending reveal on %s", reason => {
+  const h = setup();
+  h.tab();
+  vi.advanceTimersByTime(50);
+  if (reason === "escape") h.switcher.keydown(new KeyboardEvent("keydown", { key: "Escape" }));
+  if (reason === "blur") h.switcher.cancel(false);
+  if (reason === "navigation") h.switcher.update("a", ["a", "b", "c"]);
+  if (reason === "archive") h.switcher.update("c", ["a", "c"]);
+  vi.advanceTimersByTime(200);
+  expect(h.state).toBeNull();
+  h.release();
+  expect(h.commit).not.toHaveBeenCalled();
+});
+
+it("gives each new gesture its own full delay", () => {
+  const h = setup();
+  h.tab();
+  vi.advanceTimersByTime(50);
+  h.release();
+  h.tab();
+  vi.advanceTimersByTime(51);
+  expect(h.state?.visible).toBe(false);
+  vi.advanceTimersByTime(50);
+  expect(h.state?.visible).toBe(true);
+});
 
 function setup() {
   let state: SwitcherState | null = null;
@@ -25,7 +110,7 @@ function setup() {
 it("selects the last visited thread, freezes the order and commits only on Ctrl release", () => {
   const h = setup();
   expect(h.tab().defaultPrevented).toBe(true);
-  expect(h.state).toEqual({ ids: ["c", "b", "a"], selected: 1 });
+  expect(h.state).toEqual({ ids: ["c", "b", "a"], selected: 1, visible: false });
   // A realtime update changes neither the history nor the open selection.
   h.switcher.update("c", ["b", "a", "c"]);
   expect(h.commit).not.toHaveBeenCalled();
@@ -45,7 +130,7 @@ it("toggles between the last two visits after confirmation", () => {
   h.tab(); h.release();
   h.switcher.update("b", ["a", "b", "c"]);
   h.tab();
-  expect(h.state).toEqual({ ids: ["b", "c", "a"], selected: 1 });
+  expect(h.state).toEqual({ ids: ["b", "c", "a"], selected: 1, visible: false });
   h.release();
   expect(h.commit.mock.calls).toEqual([["b"], ["c"]]);
 });
@@ -98,7 +183,7 @@ it("excludes unavailable threads and cancels if one is archived during selection
   const h = setup();
   h.switcher.update("c", ["a", "c"]);
   h.tab();
-  expect(h.state).toEqual({ ids: ["c", "a"], selected: 1 });
+  expect(h.state).toEqual({ ids: ["c", "a"], selected: 1, visible: false });
   h.switcher.update("c", ["c"]);
   expect(h.state).toBeNull();
   h.release();
@@ -116,7 +201,7 @@ it("starts with all available threads in sidebar order, even before visiting the
   });
   switcher.update("a", ["a", "b", "c"]);
   switcher.keydown(new KeyboardEvent("keydown", { key: "Tab", ctrlKey: true }));
-  expect(state).toEqual({ ids: ["c", "a", "b"], selected: 2 });
+  expect(state).toEqual({ ids: ["c", "a", "b"], selected: 2, visible: false });
 });
 
 it("keeps visited threads first and appends unvisited threads in current sidebar order", () => {
@@ -130,14 +215,14 @@ it("keeps visited threads first and appends unvisited threads in current sidebar
   switcher.update("b", order);
   const tab = () => switcher.keydown(new KeyboardEvent("keydown", { key: "Tab", ctrlKey: true }));
   tab();
-  expect(state).toEqual({ ids: ["b", "a", "d", "c"], selected: 1 });
+  expect(state).toEqual({ ids: ["b", "a", "d", "c"], selected: 1, visible: false });
   order = ["c", "d", "b", "a"];
   switcher.update("b", order);
   tab();
-  expect(state).toEqual({ ids: ["b", "a", "d", "c"], selected: 2 });
+  expect(state).toEqual({ ids: ["b", "a", "d", "c"], selected: 2, visible: false });
   switcher.cancel(false);
   tab();
-  expect(state).toEqual({ ids: ["b", "a", "c", "d"], selected: 1 });
+  expect(state).toEqual({ ids: ["b", "a", "c", "d"], selected: 1, visible: false });
 });
 
 it("reads sidebar row order without duplicates and includes unrendered threads", () => {
@@ -163,7 +248,7 @@ it("opens from the new-thread composer using MRU and supports reverse selection"
   const h = setup();
   h.switcher.update(null, ["a", "b", "c"]);
   h.tab();
-  expect(h.state).toEqual({ ids: ["c", "b", "a"], selected: 0 });
+  expect(h.state).toEqual({ ids: ["c", "b", "a"], selected: 0, visible: false });
   h.release();
   expect(h.commit).toHaveBeenCalledExactlyOnceWith("c");
   h.tab(true);
@@ -177,11 +262,11 @@ it("opens from new-thread compose before any visits, including a single availabl
   const switcher = createThreadSwitcher({ isComposerFocused: () => true, changed: next => { state = next; }, commit: h.commit, cancel: h.cancel });
   switcher.update(null, ["a", "b"]);
   switcher.keydown(new KeyboardEvent("keydown", { key: "Tab", ctrlKey: true }));
-  expect(state).toEqual({ ids: ["a", "b"], selected: 0 });
+  expect(state).toEqual({ ids: ["a", "b"], selected: 0, visible: false });
   switcher.cancel(true);
   switcher.update(null, ["b"]);
   switcher.keydown(new KeyboardEvent("keydown", { key: "Tab", ctrlKey: true }));
-  expect(state).toEqual({ ids: ["b"], selected: 0 });
+  expect(state).toEqual({ ids: ["b"], selected: 0, visible: false });
   switcher.keyup(new KeyboardEvent("keyup", { key: "Control" }));
   expect(h.commit).toHaveBeenCalledExactlyOnceWith("b");
   switcher.update(null, []);

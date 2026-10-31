@@ -1,6 +1,7 @@
 export interface SwitcherState {
   ids: readonly string[];
   selected: number;
+  visible: boolean;
 }
 
 interface SwitcherOptions {
@@ -17,8 +18,13 @@ export function createThreadSwitcher(options: SwitcherOptions) {
   let current: string | null = null;
   let eligible = new Set<string>();
   let state: SwitcherState | null = null;
+  let revealTimer: ReturnType<typeof setTimeout> | undefined;
 
   function publish(next: SwitcherState | null) {
+    if (!next) {
+      clearTimeout(revealTimer);
+      revealTimer = undefined;
+    }
     state = next;
     options.changed(next);
   }
@@ -61,10 +67,15 @@ export function createThreadSwitcher(options: SwitcherOptions) {
         const ids = [...new Set([...history, ...(options.sidebarOrder?.() ?? []), ...eligible])].filter(id => eligible.has(id));
         if (!ids.length || (current && (ids.length < 2 || !ids.includes(current)))) return;
         const index = current ? ids.indexOf(current) : event.shiftKey ? 0 : -1;
-        publish({ ids, selected: (index + (event.shiftKey ? -1 : 1) + ids.length) % ids.length });
+        publish({ ids, selected: (index + (event.shiftKey ? -1 : 1) + ids.length) % ids.length, visible: false });
+        // Keep the list hidden through exactly 100 ms, including Ctrl release there.
+        revealTimer = setTimeout(() => {
+          revealTimer = undefined;
+          if (state) publish({ ...state, visible: true });
+        }, 101);
       } else {
         consume(event);
-        publish({ ids: state.ids, selected: (state.selected + (event.shiftKey ? -1 : 1) + state.ids.length) % state.ids.length });
+        publish({ ...state, selected: (state.selected + (event.shiftKey ? -1 : 1) + state.ids.length) % state.ids.length });
       }
     },
     keyup(event: KeyboardEvent) {

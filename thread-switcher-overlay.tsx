@@ -93,6 +93,7 @@ export function ThreadSwitcher() {
     document.addEventListener("visibilitychange", visibility);
     window.addEventListener("pointerdown", pointer, true);
     return () => {
+      switcher.cancel(false);
       window.removeEventListener("keydown", keydown, true);
       window.removeEventListener("keyup", keyup, true);
       window.removeEventListener("blur", blur);
@@ -122,7 +123,7 @@ export function ThreadSwitcher() {
     return () => cancelAnimationFrame(frame);
   }, [threadId, state]);
 
-  if (!state) return null;
+  if (!state?.visible) return null;
   const byId = new Map(threads.map(thread => [thread.id, thread]));
   const projectNames = new Map(projects.map(project => [project.id, project.name]));
   const sectionNames = new Map(sections.map(section => [section.id, section.name]));
