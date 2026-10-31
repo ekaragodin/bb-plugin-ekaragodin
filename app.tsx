@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { definePluginApp, experimental_THREAD_ACTION_GROUPS, experimental_useSidebarThreads } from "@get-bb/plugin-sdk/app";
+import { definePluginApp, experimental_THREAD_ACTION_GROUPS, experimental_THREAD_INFO_ROW_GROUPS, experimental_useSidebarThreads } from "@get-bb/plugin-sdk/app";
 import { decorateThreadRows } from "./labels";
 import { createReviewActionFactory } from "./review-action";
 import { ThreadSwitcher } from "./thread-switcher-overlay";
+import { RepositoryRow } from "./repository-row";
 
 function ProjectLabels() {
   const { threads, projects } = experimental_useSidebarThreads();
@@ -20,6 +21,12 @@ function ProjectLabels() {
 
 export default definePluginApp((app) => {
   const createReviewAction = createReviewActionFactory();
+  app.slots.experimental_threadInfoRow({
+    id: "github-repository",
+    group: experimental_THREAD_INFO_ROW_GROUPS.git,
+    order: -1,
+    component: RepositoryRow,
+  });
   app.slots.experimental_appOverlay({ id: "project-labels", component: ProjectLabels });
   app.slots.experimental_appOverlay({ id: "thread-switcher", component: ThreadSwitcher });
   app.slots.experimental_threadAction({

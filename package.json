@@ -13,11 +13,13 @@
       "icon": "Folder"
     },
     "server": "./server.ts",
+    "host": "./host.ts",
     "app": "./app.tsx",
     "skills": []
   },
   "devDependencies": {
     "@get-bb/plugin-sdk": "0.6.79",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -29,5 +31,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "bb plugin build"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   }
 }

@@ -2,6 +2,13 @@
 
 Personal plugin for customizing BB.
 
+## Repository link
+
+The thread's Info tab shows **Repository** before **Branch** when the project's
+checkout's `origin` is on github.com. The read runs Git on the environment's
+machine and supports worktrees. SSH, HTTPS, HTTP and Git remote URLs become a clean
+HTTPS link to `owner/repo`. Projects without a GitHub remote show no row.
+
 ## Sidebar project labels
 
 Shows a compact project name on a second line below each sidebar thread title, including in chronological mode. Long names truncate. Threads without a known project get no label.
