@@ -142,6 +142,11 @@ export function TitleSettings() {
 
 export function TitleRefreshFeedback({ controller }: { controller: TitleActionController }) {
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
+  useEffect(() => {
+    if (!snapshot.notice || snapshot.notice.error) return;
+    const timer = setTimeout(controller.dismiss, 5000);
+    return () => clearTimeout(timer);
+  }, [controller, snapshot.notice]);
   if (!snapshot.notice && !snapshot.busy.size) return null;
   return <div role={snapshot.notice?.error ? "alert" : "status"} style={{
     position: "fixed", right: 16, bottom: 16, zIndex: 1000, width: "min(440px, calc(100vw - 32px))",

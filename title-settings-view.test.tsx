@@ -9,7 +9,10 @@ import { createTitleActionController } from "./title-action";
 
 const slots: ReturnType<typeof renderSlot>[] = [];
 const unexpectedRpc = () => { throw new Error("Unexpected RPC call"); };
-afterEach(() => { for (const slot of slots.splice(0)) slot.lifecycle.unmount(); });
+afterEach(() => {
+  for (const slot of slots.splice(0)) slot.lifecycle.unmount();
+  vi.useRealTimers();
+});
 const settings: TitleSettingsView = {
   providerId: "codex", model: "small", hostId: "primary",
   state: "configured", reason: null,
@@ -84,6 +87,38 @@ it("renders action progress and errors outside the conversation", async () => {
   fireEvent.click(slot.getByRole("button", { name: "Dismiss title notification" }));
   expect(slot.queryByRole("alert")).toBeNull();
   expect(slot.inspection.sdkCalls).toEqual([]);
+});
+
+it("dismisses title success notices five seconds after the latest result", async () => {
+  vi.useFakeTimers();
+  const controller = createTitleActionController();
+  const slot = renderSlot({ component: () => <TitleRefreshFeedback controller={controller} /> }, {});
+  slots.push(slot);
+  const update = (title: string) => act(async () => {
+    await controller.action("thread", async () => ({ status: "updated", title })).run({ requestRename() {} });
+  });
+  await update("First title");
+  act(() => vi.advanceTimersByTime(4999));
+  expect(slot.getByRole("status").textContent).toContain("First title");
+  await update("Second title");
+  act(() => vi.advanceTimersByTime(4999));
+  expect(slot.getByRole("status").textContent).toContain("Second title");
+  act(() => vi.advanceTimersByTime(1));
+  expect(slot.queryByRole("status")).toBeNull();
+});
+
+it.each(["updated", "unchanged", "skipped"] as const)("dismisses a %s completion notice after five seconds", async (status) => {
+  vi.useFakeTimers();
+  const controller = createTitleActionController();
+  const slot = renderSlot({ component: () => <TitleRefreshFeedback controller={controller} /> }, {});
+  slots.push(slot);
+  await act(async () => {
+    await controller.action("thread", async () => ({ status, title: "Current title" })).run({ requestRename() {} });
+  });
+  act(() => vi.advanceTimersByTime(4999));
+  expect(slot.queryByRole("status")).not.toBeNull();
+  act(() => vi.advanceTimersByTime(1));
+  expect(slot.queryByRole("status")).toBeNull();
 });
 
 it("registers the refresh action and title settings with BB", async () => {
