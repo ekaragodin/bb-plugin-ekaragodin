@@ -1,14 +1,14 @@
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { repositoryContract, repositoryHostContract } from "./repository-contract";
 import { titleContract, titleHostContract } from "./title-contract";
-import { createTitleConfiguration, defineTitleSettings } from "./title-configuration";
+import { createTitleConfiguration, createTitleSettings } from "./title-configuration";
 import { readTitleContext } from "./title-context";
 import { createTitleRefresh } from "./title-refresh";
 
 export default function plugin(bb: BbPluginApi) {
   const controller = new AbortController();
   bb.onDispose(() => controller.abort());
-  const configuration = createTitleConfiguration(bb.sdk, defineTitleSettings(bb));
+  const configuration = createTitleConfiguration(bb.sdk, createTitleSettings(bb));
   const titleHost = bb.hosts.experimental_client({ contract: titleHostContract });
   const titles = createTitleRefresh({
     configuration: () => configuration.resolve(),

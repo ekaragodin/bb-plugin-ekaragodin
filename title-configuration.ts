@@ -1,22 +1,38 @@
-import type { BbPluginApi } from "@get-bb/plugin-sdk";
+import type { PluginKvStorage, PluginRealtime } from "@get-bb/plugin-sdk";
 import { z } from "zod";
 import { titleSelectionSchema, type TitleProviderId, type TitleSettingsView } from "./title-contract";
 
-export function defineTitleSettings(bb: Pick<BbPluginApi, "settings">) {
-  return bb.settings.define({
-    titleProvider: {
-      type: "string", label: "Title provider", default: "",
-      description: "Agent provider used for titles in every thread.",
-      experimental_schema: z.string().max(200),
-    },
-    titleModel: {
-      type: "string", label: "Title model", default: "",
-      description: "Small model selected for title generation.",
-      experimental_schema: z.string().max(200),
-    },
-  });
+type TitleSettingsValues = { titleProvider: string; titleModel: string };
+export interface TitleSettingsHandle {
+  get(): Promise<TitleSettingsValues>;
+  set(values: TitleSettingsValues): Promise<TitleSettingsValues>;
+  onChange(listener: (next: TitleSettingsValues, previous: TitleSettingsValues) => void): void;
 }
-export type TitleSettingsHandle = ReturnType<typeof defineTitleSettings>;
+
+export function createTitleSettings(bb: {
+  storage: { kv: Pick<PluginKvStorage, "get" | "set"> };
+  realtime: Pick<PluginRealtime, "publish">;
+}): TitleSettingsHandle {
+  const listeners = new Set<(next: TitleSettingsValues, previous: TitleSettingsValues) => void>();
+  const schema = z.object({ titleProvider: z.string().max(200), titleModel: z.string().max(200) }).strict();
+  const get = async () => {
+    const stored = await bb.storage.kv.get<unknown>("title-settings");
+    return stored === undefined ? { titleProvider: "", titleModel: "" } : schema.parse(stored);
+  };
+  return {
+    get,
+    async set(values) {
+      const selection = titleSelectionSchema.parse({ providerId: values.titleProvider, model: values.titleModel });
+      const next = { titleProvider: selection.providerId, titleModel: selection.model };
+      const previous = await get();
+      await bb.storage.kv.set("title-settings", next);
+      for (const listener of listeners) listener(next, previous);
+      bb.realtime.publish("title-settings-changed", null);
+      return next;
+    },
+    onChange(listener) { listeners.add(listener); },
+  };
+}
 
 export interface TitleConfigurationSdk {
   system: { config(): Promise<{ primaryHostId: string | null }> };
@@ -135,7 +151,7 @@ export function createTitleConfiguration(sdk: TitleConfigurationSdk, settings: T
     async read(): Promise<TitleSettingsView> { return (await inspect()).view; },
     async save(input: { providerId: string; model: string }): Promise<TitleSettingsView> {
       const selection = titleSelectionSchema.parse(input);
-      await settings.experimental_set({ titleProvider: selection.providerId, titleModel: selection.model });
+      await settings.set({ titleProvider: selection.providerId, titleModel: selection.model });
       return (await inspect()).view;
     },
     async resolve(): Promise<ResolvedTitleConfiguration> {

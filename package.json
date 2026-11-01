@@ -8,7 +8,7 @@
   },
   "bb": {
     "name": "Karagodin's Personal Plugin",
-    "description": "Personal BB customizations: sidebar project labels, recent thread switching, and child-thread code reviews.",
+    "description": "Personal BB customizations: project labels, recent thread switching, child-thread reviews, and automatic thread titles.",
     "branding": {
       "icon": "Folder"
     },

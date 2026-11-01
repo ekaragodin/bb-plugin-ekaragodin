@@ -21,6 +21,38 @@ Choose **Thermo Nuclear Review** in a thread's actions or right-click menu to st
 
 The initial prompt is: `Review the changes using the cursor-team-kit:thermo-nuclear-code-quality-review skill.`. Install and enable Cursor Team Kit in Codex on the execution machine. The child uses the project's default Codex execution settings and starts with a fresh conversation.
 
+## Thread title refresh
+
+Choose **Update title** in a thread's actions or right-click menu to generate a
+short title for its current goal. The action is also available in **Customize
+actions**. When the current goal concerns a known ticket, its number goes first.
+A suitable existing title stays unchanged.
+
+In the plugin's **Thread titles** settings, select a provider and a small model.
+This one selection applies to every thread, independently of the thread's own
+provider. Generation runs on BB's primary machine through its existing CLI login.
+Codex and Claude Code are supported; other providers are shown as unsupported.
+The chosen CLI must be installed and signed in on that machine. Older CLI
+versions without the required isolation controls fail without changing the title.
+No model is selected automatically.
+
+The same action runs automatically after each of a thread's first five successful
+agent turns, counted over its lifetime. Failed and interrupted turns do not count.
+Manual renaming does not stop these automatic updates. Historical turns are not
+replayed when the plugin loads, and failed automatic attempts are not retried.
+After the fifth successful turn, use the action manually.
+
+The model receives the current title and the first three/latest six conversation
+messages, deduplicated and shortened to fit a bounded context. Tool output,
+reasoning and attachment bodies are excluded. Generation creates no helper BB
+threads or transcript messages. Errors preserve the title and appear outside the
+conversation when the action is run manually. Changes to the title, conversation
+or model selection during generation discard its result. BB's public title API
+has no atomic comparison, so a narrow race with another title writer remains.
+
+Agents can use the same backend operation through the discoverable
+`refreshTitle` RPC; inspect it with `bb plugin rpc list ekaragodin`.
+
 ## Recent thread switcher
 
 With the caret in BB's main thread composer or the new-thread composer, hold **Ctrl** and press **Tab** to
@@ -67,4 +99,20 @@ bb plugin install . --yes
 
 Reload changes with `bb plugin reload ekaragodin`. Disable with `bb plugin disable ekaragodin`.
 
-Requires BB >=0.47 and Plugin SDK >=0.6.79. The data and lifecycle APIs are public experimental SDK surfaces. Label placement depends on the bundled list's `data-sidebar-thread-id`, `data-sidebar-rename-row`, and `.bb-thread-title` DOM structure; a future BB layout change may require updating the decorator. Other thread-list providers are supported only if they use this structure.
+Requires BB >=0.48.1 and Plugin SDK >=0.6.104. The data and lifecycle APIs are public experimental SDK surfaces. Label placement depends on the bundled list's `data-sidebar-thread-id`, `data-sidebar-rename-row`, and `.bb-thread-title` DOM structure; a future BB layout change may require updating the decorator. Other thread-list providers are supported only if they use this structure.
+
+### Optional live checks
+
+The normal suite uses synthetic processes and SDK fixtures. To call an actual
+model, explicitly provide its executable and model; these checks use synthetic
+conversation data and consume provider usage.
+
+```sh
+TITLE_SMOKE_CODEX_PATH=/absolute/path/to/codex TITLE_SMOKE_CODEX_MODEL=gpt-6-luna npm test -- title-provider.live.test.ts
+TITLE_SMOKE_CLAUDE_PATH=/absolute/path/to/claude TITLE_SMOKE_CLAUDE_MODEL=haiku npm test -- title-provider.live.test.ts
+TITLE_SMOKE_THREAD_ID=your-thread-id npm test -- title-context.live.test.ts
+```
+
+The context check reads the thread through the current BB session's
+`BB_SERVER_URL` and does not change it. A mocked provider response does not prove
+login, model access or runtime isolation.
