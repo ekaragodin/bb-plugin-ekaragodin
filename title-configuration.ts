@@ -71,7 +71,7 @@ export function createTitleConfiguration(sdk: TitleConfigurationSdk, settings: T
   let revision = 0;
   settings.onChange(() => { revision += 1; });
 
-  async function inspect(): Promise<{ view: TitleSettingsView; resolved: ResolvedTitleConfiguration | null }> {
+  async function inspect(resolveOnly = false): Promise<{ view: TitleSettingsView; resolved: ResolvedTitleConfiguration | null }> {
     const stored = await settings.get();
     const providerId = stored.titleProvider;
     const model = stored.titleModel;
@@ -89,6 +89,7 @@ export function createTitleConfiguration(sdk: TitleConfigurationSdk, settings: T
       view.state = "unavailable";
       view.reason = "The configured title provider or model is invalid.";
     }
+    if (resolveOnly && !configured) return { view, resolved: null };
 
     let primaryHostId: string | null;
     try { primaryHostId = (await sdk.system.config()).primaryHostId; }
@@ -155,7 +156,7 @@ export function createTitleConfiguration(sdk: TitleConfigurationSdk, settings: T
       return (await inspect()).view;
     },
     async resolve(): Promise<ResolvedTitleConfiguration> {
-      const { view, resolved } = await inspect();
+      const { view, resolved } = await inspect(true);
       if (!resolved) throw new Error(view.reason ?? "The title configuration is unavailable.");
       return resolved;
     },
