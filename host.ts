@@ -3,12 +3,17 @@ import { promisify } from "node:util";
 import { experimental_defineHostEntry } from "@get-bb/plugin-sdk/host";
 import { repositoryHostContract } from "./repository-contract";
 import { githubRepositoryUrl } from "./repository-link";
+import { titleHostContract } from "./title-contract";
+import { completeTitle } from "./title-provider";
 
 const execFileAsync = promisify(execFile);
 
 export default experimental_defineHostEntry({
-  contract: repositoryHostContract,
+  contract: { ...repositoryHostContract, ...titleHostContract },
   handlers: {
+    titleComplete(input, { signal, lifecycle }) {
+      return completeTitle(input, signal, lifecycle.signal);
+    },
     async repository({ path }, { signal }) {
       try {
         const { stdout } = await execFileAsync("git", ["config", "--get", "remote.origin.url"], {

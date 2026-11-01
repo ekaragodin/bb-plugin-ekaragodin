@@ -27,3 +27,9 @@ it("bounds host generation input and does not allow automatic RPC retry", () => 
   expect(() => titleHostContract.titleComplete.output.parse({ title: "x".repeat(121) })).toThrow();
   expect("experimental_retryable" in titleHostContract.titleComplete).toBe(false);
 });
+
+it("counts Unicode title characters consistently at the host boundary", () => {
+  const title = "📚".repeat(120);
+  expect(titleHostContract.titleComplete.output.parse({ title })).toEqual({ title });
+  expect(() => titleHostContract.titleComplete.output.parse({ title: title + "📚" })).toThrow();
+});

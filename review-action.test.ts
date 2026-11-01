@@ -9,6 +9,7 @@ const thread: PluginThreadActionTarget = {
   id: "parent-thread",
   projectId: "target-project",
   parentThreadId: null,
+  parentNotifications: "auto",
   archivedAt: null,
   pinnedAt: null,
   sectionId: null,

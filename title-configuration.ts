@@ -94,10 +94,11 @@ export function createTitleConfiguration(sdk: TitleConfigurationSdk, settings: T
         const supported = supportedIds.has(id);
         const provider = providers.find(entry => entry.id === id);
         const cli = cliStatuses[id];
-        const reason = !supported ? "This provider is not supported for title generation."
-          : !provider?.available ? "This provider is disabled or unavailable on the primary machine."
-          : !cli?.installed || !cli.executablePath ? "The provider CLI is not installed on the primary machine."
-          : cli.versionUnsupported ? "The provider CLI version is not supported." : null;
+        let reason: string | null = null;
+        if (!supported) reason = "This provider is not supported for title generation.";
+        else if (!provider?.available) reason = "This provider is disabled or unavailable on the primary machine.";
+        else if (!cli?.installed || !cli.executablePath) reason = "The provider CLI is not installed on the primary machine.";
+        else if (cli.versionUnsupported) reason = "The provider CLI version is not supported.";
         return { id, label, supported, available: reason === null, reason };
       });
       if (!configured) return { view, resolved: null };

@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "bb": ">=0.47",
-    "bbPluginSdk": ">=0.6.79"
+    "bb": ">=0.48.1",
+    "bbPluginSdk": ">=0.6.104"
   },
   "bb": {
     "name": "Karagodin's Personal Plugin",
@@ -18,7 +18,7 @@
     "skills": []
   },
   "devDependencies": {
-    "@get-bb/plugin-sdk": "0.6.79",
+    "@get-bb/plugin-sdk": "0.6.104",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
