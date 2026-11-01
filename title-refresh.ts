@@ -136,8 +136,7 @@ export function createTitleRefresh(dependencies: TitleRefreshDependencies) {
               stored.cursor = row.seq;
               const isNewSuccess = row.status === "completed" && !stored.successfulTurnIds.includes(row.turnId);
               if (isNewSuccess) stored.successfulTurnIds.push(row.turnId);
-              const shouldGenerate = isNewSuccess && row.createdAt >= activatedAt && !stored.attemptedTurnIds.includes(row.turnId);
-              if (shouldGenerate) stored.attemptedTurnIds.push(row.turnId);
+              const shouldGenerate = isNewSuccess && row.createdAt >= activatedAt;
               await state.write(threadId, stored);
               if (shouldGenerate) await generate(threadId, signal);
               if (stored.successfulTurnIds.length === 5) return;

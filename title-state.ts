@@ -10,16 +10,18 @@ const stateSchema = z.object({
   version: z.literal(1),
   cursor: z.number().int().nonnegative(),
   successfulTurnIds: turnIds,
-  attemptedTurnIds: turnIds,
-}).strict().refine(state => state.attemptedTurnIds.every(id => state.successfulTurnIds.includes(id)));
+}).strict();
+// Older installations persisted an attempt list; the cursor and successful IDs already prevent replay.
+const storedStateSchema = stateSchema.extend({ attemptedTurnIds: z.unknown().optional() })
+  .transform(({ attemptedTurnIds: _legacy, ...state }) => state);
 export type TitleTurnState = z.infer<typeof stateSchema>;
 
 export function createTitleState(kv: TitleKv) {
   return {
     async read(threadId: string): Promise<TitleTurnState> {
       const stored = await kv.get<unknown>(`title-turns:${threadId}`);
-      if (stored === undefined) return { version: 1, cursor: 0, successfulTurnIds: [], attemptedTurnIds: [] };
-      const parsed = stateSchema.safeParse(stored);
+      if (stored === undefined) return { version: 1, cursor: 0, successfulTurnIds: [] };
+      const parsed = storedStateSchema.safeParse(stored);
       if (!parsed.success) throw new Error("The stored title turn state is invalid.");
       return parsed.data;
     },

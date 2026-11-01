@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
-import { useRpc, useSdk, useRealtime, useRealtimeConnectionState } from "@get-bb/plugin-sdk/app";
-import { titleSelectionSchema, type titleContract, type TitleSettingsView } from "./title-contract";
+import { useRpc, useSdk, useRealtime, useRealtimeConnectionState, experimental_useRpcQuery } from "@get-bb/plugin-sdk/app";
+import { titleSelectionSchema, titleContract } from "./title-contract";
 import type { TitleActionController } from "./title-action";
 
 type Selection = { providerId: string; model: string };
@@ -18,14 +18,16 @@ export function TitleSettings() {
   const rpc = useRpc<typeof titleContract>();
   const sdk = useSdk();
   const connection = useRealtimeConnectionState();
-  const [view, setView] = useState<TitleSettingsView>();
+  const { data: view, error: loadError, isFetching: loading, refetch } = experimental_useRpcQuery({
+    contract: titleContract, method: "titleSettings", input: null,
+  });
   const [draft, setDraft] = useState<Selection>({ providerId: "", model: "" });
   const [catalog, setCatalog] = useState<{ key: string; models: Model[]; error: string | null; loading: boolean }>({
     key: "", models: [], error: null, loading: false,
   });
   const [reload, setReload] = useState(0);
-  useRealtime("title-settings-changed", () => setReload(value => value + 1));
-  const [loading, setLoading] = useState(true);
+  const refresh = () => { setReload(value => value + 1); void refetch(); };
+  useRealtime("title-settings-changed", refresh);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -38,18 +40,8 @@ export function TitleSettings() {
   }, []);
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    void rpc.call("titleSettings", null).then(next => {
-      if (!active) return;
-      setView(next);
-      if (!dirty.current) setDraft({ providerId: next.providerId, model: next.model });
-      setError(null);
-    }, () => {
-      if (active) setError("Could not load title settings. Try Refresh.");
-    }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [rpc, connection, reload]);
+    if (view && !dirty.current) setDraft({ providerId: view.providerId, model: view.model });
+  }, [view]);
 
   const selectedProvider = view?.providers.find(provider => provider.id === draft.providerId);
   const catalogKey = JSON.stringify([view?.hostId ?? null, draft.providerId]);
@@ -96,10 +88,10 @@ export function TitleSettings() {
     try {
       const next = await rpc.call("saveTitleSettings", titleSelectionSchema.parse(draft));
       if (!mounted.current) return;
-      setView(next);
       setDraft({ providerId: next.providerId, model: next.model });
-      dirty.current = false;
       setSaved(true);
+      await refetch();
+      dirty.current = false;
     } catch {
       if (mounted.current) setError("Could not save title settings. Your selection is retained; try again.");
     } finally {
@@ -139,11 +131,11 @@ export function TitleSettings() {
       {currentCatalog.error ? <p role="status" style={{ margin: 0, fontSize: "0.875rem" }}>{currentCatalog.error}</p> : null}
     </fieldset>
     {view?.reason ? <p style={{ margin: 0, fontSize: "0.875rem" }}>{view.reason}</p> : null}
-    {error ? <p role="alert" style={{ margin: 0 }}>{error}</p> : null}
+    {error || loadError ? <p role="alert" style={{ margin: 0 }}>{error ?? "Could not load title settings. Try Refresh."}</p> : null}
     {saved ? <p role="status" style={{ margin: 0 }}>Title settings saved.</p> : null}
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <button type="submit" disabled={!canSave} style={{ ...buttonStyle, opacity: canSave ? 1 : 0.45 }}>{saving ? "Saving…" : "Save title settings"}</button>
-      <button type="button" disabled={saving || loading} style={{ ...buttonStyle, opacity: saving || loading ? 0.45 : 1 }} onClick={() => setReload(value => value + 1)}>Refresh</button>
+      <button type="button" disabled={saving || loading} style={{ ...buttonStyle, opacity: saving || loading ? 0.45 : 1 }} onClick={refresh}>Refresh</button>
     </div>
   </form>;
 }

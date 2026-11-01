@@ -70,7 +70,7 @@ it("persists the claim before invoking and never automatically retries failures 
   const f = fixture();
   f.rows.set("thread", [f.event(1)]);
   f.complete.mockImplementationOnce(async () => {
-    expect(JSON.stringify([...f.stored.values()])).toContain('"attemptedTurnIds":["turn1"]');
+    expect([...f.stored.values()]).toEqual([{ version: 1, cursor: 1, successfulTurnIds: ["turn1"] }]);
     throw new Error("private provider stderr [SECRET]");
   });
   await f.service.onEvents("thread");

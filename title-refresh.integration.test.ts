@@ -74,7 +74,7 @@ it("runs production completion-event and manual RPC wiring on the selected prima
   hosts.splice(hosts.indexOf(f.host), 1, host);
   await host.harness.behavior.emitThreadEvent("experimental_thread.events", { thread: f.thread(), sequence: 20 });
   expect(f.completionCalls).toHaveLength(2);
-  expect(await host.bb.storage.kv.get("title-turns:target")).toMatchObject({ successfulTurnIds: ["done"], attemptedTurnIds: ["done"], cursor: 20 });
+  expect(await host.bb.storage.kv.get("title-turns:target")).toMatchObject({ successfulTurnIds: ["done"], cursor: 20 });
 });
 
 it("cancels a production RPC host call on disposal and never writes its title", async () => {

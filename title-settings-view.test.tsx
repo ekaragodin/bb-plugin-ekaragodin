@@ -64,7 +64,8 @@ it("ignores late model responses after a provider switch and reports a save erro
     titleSettings: () => settings, saveTitleSettings: () => { throw new Error("network"); }, refreshTitle: unexpectedRpc,
   }, sdk: { providers: { models } } });
   slots.push(slot);
-  fireEvent.change(await slot.findByLabelText("Title provider"), { target: { value: "claude-code" } });
+  await waitFor(() => expect(models).toHaveBeenCalledWith({ hostId: "primary", providerId: "codex" }));
+  fireEvent.change(slot.getByLabelText("Title provider"), { target: { value: "claude-code" } });
   await slot.findByRole("option", { name: "haiku" });
   await act(async () => finishOld(catalog(["late-old-model"])));
   expect(slot.queryByRole("option", { name: "late-old-model" })).toBeNull();
@@ -107,4 +108,21 @@ it("clears the shared provider and model only after an explicit save", async () 
   fireEvent.click(button);
   await waitFor(() => expect(save).toHaveBeenCalledWith({ providerId: "", model: "" }));
   await slot.findByText("Title settings saved.");
+});
+
+it("refreshes shared settings without replacing an unsaved selection", async () => {
+  let current = settings;
+  const read = vi.fn(() => current);
+  const slot = renderSlot<object, typeof titleContract>({ component: TitleSettings }, {}, {
+    experimental_rpcContract: titleContract,
+    rpc: { titleSettings: read, saveTitleSettings: unexpectedRpc, refreshTitle: unexpectedRpc },
+    sdk: { providers: { models: async () => catalog(["small", "haiku"]) } },
+  });
+  slots.push(slot);
+  await waitFor(() => expect((slot.getByLabelText("Title model") as HTMLSelectElement).value).toBe("small"));
+  fireEvent.change(slot.getByLabelText("Title model"), { target: { value: "haiku" } });
+  current = { ...settings, model: "another-saved-model" };
+  fireEvent.click(slot.getByRole("button", { name: "Refresh" }));
+  await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect((slot.getByLabelText("Title model") as HTMLSelectElement).value).toBe("haiku"));
 });

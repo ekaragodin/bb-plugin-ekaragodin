@@ -13,11 +13,10 @@ it("persists only bounded turn bookkeeping across state instances", async () => 
   const state = await first.read("thread");
   state.cursor = 12;
   state.successfulTurnIds.push("turn1");
-  state.attemptedTurnIds.push("turn1");
   await first.write("thread", state);
   expect(await createTitleState(kv).read("thread")).toEqual({ version: 1, cursor: 12,
-    successfulTurnIds: ["turn1"], attemptedTurnIds: ["turn1"] });
-  expect(await first.read("other")).toEqual({ version: 1, cursor: 0, successfulTurnIds: [], attemptedTurnIds: [] });
+    successfulTurnIds: ["turn1"] });
+  expect(await first.read("other")).toEqual({ version: 1, cursor: 0, successfulTurnIds: [] });
 });
 
 it("refuses corrupted bookkeeping rather than replaying paid calls", async () => {
@@ -25,8 +24,18 @@ it("refuses corrupted bookkeeping rather than replaying paid calls", async () =>
   await expect(createTitleState(kv).read("thread")).rejects.toThrow("stored title turn state");
 });
 
-it("refuses duplicate IDs and attempts outside the successful-turn budget", async () => {
+it("refuses duplicate successful turn IDs", async () => {
   const state = createTitleState(store());
-  await expect(state.write("thread", { version: 1, cursor: 2, successfulTurnIds: ["x", "x"], attemptedTurnIds: [] })).rejects.toThrow();
-  await expect(state.write("thread", { version: 1, cursor: 2, successfulTurnIds: ["x"], attemptedTurnIds: ["y"] })).rejects.toThrow();
+  await expect(state.write("thread", { version: 1, cursor: 2, successfulTurnIds: ["x", "x"] })).rejects.toThrow();
+});
+
+it("reads previously persisted state without replaying or retaining its redundant attempt list", async () => {
+  const kv = store();
+  await kv.set("title-turns:thread", { version: 1, cursor: 12,
+    successfulTurnIds: ["turn1"], attemptedTurnIds: ["turn1"] });
+  const state = createTitleState(kv);
+  const loaded = await state.read("thread");
+  expect(loaded).toEqual({ version: 1, cursor: 12, successfulTurnIds: ["turn1"] });
+  await state.write("thread", loaded);
+  expect(await kv.get("title-turns:thread")).toEqual(loaded);
 });
